@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "slipcatch"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1imm10zn4s0tt"
+s3_prefix = "slipcatch"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "APIkey=\"AAAAAAAAAAAAAAAAAAAAAN34TwEAAAAAkuxlMQnYmZ3kaltdD%2FvFg0PFdBs%3D3JX9VTB9Z0vmUb7uuNxeF3t3BP3L6j2bkAWujuZ5Rgj8ED1tD1\""
+image_repositories = []

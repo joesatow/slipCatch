@@ -1,0 +1,38 @@
+{
+"Records": [
+  {
+    "eventVersion": "2.1",
+    "eventSource": "aws:s3",
+    "awsRegion": "us-east-1",
+    "eventTime": "2022-03-18T03:51:28.628Z",
+    "eventName": "ObjectCreated:Put",
+    "userIdentity": {
+      "principalId": "AWS:728866571318:joe"
+    },
+    "requestParameters": {
+      "sourceIPAddress": "68.49.137.139"
+    },
+    "responseElements": {
+      "x-amz-request-id": "GQTNK80D6NR5EC9Y",
+      "x-amz-id-2": "EzEReDa+f7ZOC1zC5Du1IBAL6QYFC0k06AJ/RD1bdzmTxJiMDFTAA5gFEpkvy5SJbFmZHimtucoxkk+lW4LqSnjAH1kGhG2i"
+    },
+    "s3": {
+      "s3SchemaVersion": "1.0",
+      "configurationId": "6443891f-1e52-4f55-8d5a-bf4fff37ec28",
+      "bucket": {
+        "name": "slipcatch",
+        "ownerIdentity": {
+          "principalId": "AGRGXNAWT16XJ"
+        },
+        "arn": "arn:aws:s3:::testbucketjsatow"
+      },
+      "object": {
+        "key": "1505013602016763905.json",
+        "size": 106027,
+        "eTag": "a2e00abc5815c5ef0af639cc2e06f52e",
+        "sequencer": "00623401C09057E241"
+      }
+    }
+  }
+]
+}

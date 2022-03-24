@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'This application scans specified Twitter users for sports betting tickets.  If
+  it meets my criteria, it sends me an SMS.
+
+  '
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: Sports Betting Ticket Scanner
+    Description: This application scans specified Twitter users for sports betting
+      tickets.  If it meets my criteria, it sends me an SMS.
+    Author: Joe Satow
+Parameters:
+  APIkey:
+    Type: String
+    Default: APIkey
+    Description: (Required) Twitter API bearer token
+    AllowedPattern: ^[A-Za-z0-9%]+$
+    ConstraintDescription: Required parameter.
+Globals:
+  Function:
+    Timeout: 10
+Resources:
+  SlipCatchBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: slipcatch
+  SlipCatchPhotosBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: slipcatchphotos
+  smsResponderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: smsResponderFunction
+      Handler: app.lambdaHandler
+      Runtime: nodejs14.x
+      Policies:
+      - Statement:
+        - Sid: snsAccess
+          Effect: Allow
+          Action:
+          - sns:*
+          Resource: '*'
+      - Statement:
+        - Sid: s3Access
+          Effect: Allow
+          Action:
+          - s3:*
+          Resource: '*'
+      Events:
+        FileUpload:
+          Type: S3
+          Properties:
+            Bucket:
+              Ref: SlipCatchBucket
+            Events: s3:ObjectCreated:*
+    Metadata:
+      SamResourceId: smsResponderFunction
+  imageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: imageFunction
+      Handler: app.lambdaHandler
+      Runtime: python3.7
+      Policies:
+      - Statement:
+        - Sid: s3Access
+          Effect: Allow
+          Action:
+          - s3:*
+          - s3-object-lambda:*
+          Resource: '*'
+      - Statement:
+        - Sid: rekognitionAccess
+          Effect: Allow
+          Action:
+          - rekognition:*
+          Resource: '*'
+      Environment:
+        Variables:
+          APIkey:
+            Ref: APIkey
+    Metadata:
+      SamResourceId: imageFunction
+Outputs:
+  smsResponderFunction:
+    Description: Lambda Function ARN
+    Value:
+      Fn::GetAtt:
+      - smsResponderFunction
+      - Arn
+  smsResponderFunctionIamRole:
+    Description: Implicit IAM Role created for function
+    Value:
+      Fn::GetAtt:
+      - smsResponderFunctionRole
+      - Arn
