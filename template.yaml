@@ -31,6 +31,10 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: slipcatchphotos
+  SlipCatchErrorsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: slipcatcherrors
   smsResponderFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -55,6 +59,11 @@ Resources:
           Type: S3
           Properties:
               Bucket: !Ref SlipCatchBucket
+              Events: s3:ObjectCreated:*
+        FileUpload:
+          Type: S3
+          Properties:
+              Bucket: !Ref SlipCatchErrorsBucket
               Events: s3:ObjectCreated:*
   imageFunction:
     Type: AWS::Serverless::Function

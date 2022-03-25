@@ -29,6 +29,10 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: slipcatchphotos
+  SlipCatchErrorsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: slipcatcherrors
   smsResponderFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -53,7 +57,7 @@ Resources:
           Type: S3
           Properties:
             Bucket:
-              Ref: SlipCatchBucket
+              Ref: SlipCatchErrorsBucket
             Events: s3:ObjectCreated:*
     Metadata:
       SamResourceId: smsResponderFunction

@@ -6,35 +6,53 @@ AWS.config.update({region: 'us-east-1'});
 exports.lambdaHandler = function(event, context) {
     var eventText = JSON.stringify(event, null, 2);
     eventText = JSON.parse(eventText);
+    var bucketName = eventText["Records"][0]["s3"]["bucket"]["name"];
     var objectKey = eventText["Records"][0]["s3"]["object"]["key"];
-    console.log("Received event:", objectKey);
 
-    var params = {
-        Bucket: 'slipcatch',
-        Key: objectKey,
-    };
+    if (bucketName == "slipcatcherrors"){
+      console.log("Received ERROR event:", objectKey);
+      var params = {
+        Bucket: 'slipcatcherrors', // your bucket name,
+        Key: objectKey // path to the object you're looking for
+      }
+      getObject(params);
 
-    tweeturl = objectKey.split(".")
-    tweeturl = "https://twitter.com/b/status/" + tweeturl[0];
-    console.log(tweeturl);
+    } else {
+      console.log("Received event:", objectKey);
 
-    var params = {
-        Message: "New tweet found!  " + tweeturl,
-        TopicArn: "arn:aws:sns:us-east-1:728866571318:testtopic"
-    };
+      tweeturl = objectKey.split(".")
+      tweeturl = "https://twitter.com/b/status/" + tweeturl[0];
+      console.log(tweeturl);
 
-    // Create promise and SNS service object
-    var publishTextPromise = new AWS.SNS({apiVersion: '2010-03-31'}).publish(params).promise();
+      var params = {
+          Message: "New tweet found!  " + tweeturl,
+          TopicArn: "arn:aws:sns:us-east-1:728866571318:testtopic"
+      };
+      sendSNSmessage(params);
+    }
+};
 
-    // Handle promise's fulfilled/rejected states
-    publishTextPromise.then(
-      function(data) {
-        console.log(`Message ${params.Message} sent to the topic ${params.TopicArn}`);
-        console.log("MessageID is " + data.MessageId);
-      }).catch(
-        function(err) {
-          console.log("promise catch" + tweeturl);
+async function getObject(p){
+  const data = JSON.parse((await (s3.getObject(p).promise())).Body.toString('utf-8'))
+  var params = {
+      Message: "Error found for user: " + data['user'] + ".  Error message: " + data['error'],
+      TopicArn: "arn:aws:sns:us-east-1:728866571318:testtopic"
+  };
+  sendSNSmessage(params);
+}
+
+function sendSNSmessage(parameters){
+  // Create promise and SNS service object
+  var publishTextPromise = new AWS.SNS({apiVersion: '2010-03-31'}).publish(parameters).promise();
+
+  // Handle promise's fulfilled/rejected states
+  publishTextPromise.then(
+    function(data) {
+      console.log(`Message ${parameters.Message} sent to the topic ${parameters.TopicArn}`);
+      console.log("MessageID is " + data.MessageId);
+    }).catch(
+      function(err) {
         console.error(err, err.stack);
         console.log(err)
-      });
-};
+    });
+}
