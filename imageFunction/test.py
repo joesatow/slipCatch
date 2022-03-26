@@ -17,8 +17,8 @@ now = now.astimezone(UTC)
 d = now - timedelta(hours=0, minutes=1)
 lastMinute = d.strftime("%Y-%m-%dT%H:%M:00Z")
 #lastMinute = '2022-03-17T20:35:00Z'
-queries = ["satowjoseph", "joesatow", "beaulw23455rfagner", "onlyparlays_", "themistermarcus", "portman7387", "j2110"]
-
+queries = ["satowjoseph", "joesatow", "beaulwagner", "onlyparlays_", "themistermarcus", "portman7387", "j2110"]
+#queries = ["satowjoseph", "joesatow"]
 
 payload={}
 headers = {
@@ -31,12 +31,14 @@ def checkJson(key,jsonContents):
     return existsFlag
 
 def detect_text(photo,mediakey,data):
+    print("Beginning scan for: " + mediakey)
     omitList = []
     client=boto3.client('rekognition')
-
     response=client.detect_text(Image={'S3Object':{'Bucket':'slipcatchphotos','Name':photo}})
-
     textDetections=response['TextDetections']
+    found = False
+
+    print("Checking for key words...")
     for text in textDetections:
         if text['DetectedText'].lower() == "max":
             #print('First word: ' + text['DetectedText'])
@@ -44,6 +46,7 @@ def detect_text(photo,mediakey,data):
             #print('Following word: ' + word2)
             if word2.lower() == "wager":
                 print('Photo detection.  max bet found. media key: ' + mediakey)
+                found = True
                 for item in data['data']:
                     if checkJson('attachments',item):
                         for attachment in item['attachments']['media_keys']:
@@ -58,12 +61,12 @@ def detect_text(photo,mediakey,data):
                                     Bucket='slipcatch',
                                     Key=item['id'] + '.json'
                                 )
-
-        if mediakey not in omitList:
+        elif mediakey not in omitList:
             if text['DetectedText'].lower() == "under":
                 word2 = textDetections[int(text['Id'])+1]['DetectedText']
                 if word2.lower() == "review...":
                     print('Photo detection.  under review found. media key: ' + mediakey)
+                    found = True
                     for item in data['data']:
                         if checkJson('attachments',item):
                             for attachment in item['attachments']['media_keys']:
@@ -80,8 +83,10 @@ def detect_text(photo,mediakey,data):
                                     )
                                     omitList.append(mediakey)
 
-for query in queries:
+    if found == False:
+        print("Nothing found.")
 
+for query in queries:
     twitUrl = "https://api.twitter.com/2/tweets/search/recent?query=from:" + query + "&start_time=" + lastMinute + "&expansions=attachments.media_keys&media.fields=url"
     omitList = []
     response = requests.request("GET", twitUrl, headers=headers, data=payload)
@@ -92,7 +97,7 @@ for query in queries:
         print("errors found in API call for user: " + query)
         print("error message: " + python_obj['errors'][0]['message'])
         print()
-        
+
         json_object = {
                     "user": query,
                     "error": python_obj['errors'][0]['message']
@@ -142,7 +147,7 @@ for query in queries:
                 for item in python_obj['includes']['media']:
                     if (item['type'] == 'photo'):
                         if item['media_key'] not in omitList:
-                            print('New single photo.  media key: ' + item['media_key'])
+                            print('New single photo from: ' + query + '. Media key: ' + item['media_key'] + ". Sending to scan...")
                             url = item['url']
                             r = requests.get(url, stream=True)
                             key = url.split("media/",1)[1]

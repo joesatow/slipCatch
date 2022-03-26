@@ -34,7 +34,24 @@ def lambdaHandler(event, context):
         python_obj = json.loads(response.text)
 
         if checkJson("errors",python_obj):
-            print("errors found in API call")
+            print()
+            print("errors found in API call for user: " + query)
+            print("error message: " + python_obj['errors'][0]['message'])
+            print()
+
+            json_object = {
+                        "user": query,
+                        "error": python_obj['errors'][0]['message']
+                        }
+
+            errorTime = now - timedelta(hours=5, minutes=0)
+            errorTime = errorTime.strftime("%m-%d-%Y")
+            s3 = boto3.client('s3')
+            s3.put_object(
+                Body=json.dumps(json_object),
+                Bucket='slipcatcherrors',
+                Key=str(errorTime) + "_" + query + '.json'
+            )
         else:
             resultCount = python_obj['meta']['result_count']
             if resultCount == 0:
@@ -71,7 +88,7 @@ def lambdaHandler(event, context):
                     for item in python_obj['includes']['media']:
                         if (item['type'] == 'photo'):
                             if item['media_key'] not in omitList:
-                                print('New single photo.  media key: ' + item['media_key'])
+                                print('New single photo from: ' + query + '. Media key: ' + item['media_key'] + ". Scanning photo...")
                                 url = item['url']
                                 r = requests.get(url, stream=True)
                                 key = url.split("media/",1)[1]
@@ -85,12 +102,14 @@ def checkJson(key,jsonContents):
     return existsFlag
 
 def detect_text(photo,mediakey,data):
+    print("Beginning scan for: " + mediakey)
     omitList = []
     client=boto3.client('rekognition')
-
     response=client.detect_text(Image={'S3Object':{'Bucket':'slipcatchphotos','Name':photo}})
-
     textDetections=response['TextDetections']
+    found = False
+
+    print("Checking for key words...")
     for text in textDetections:
         if text['DetectedText'].lower() == "max":
             #print('First word: ' + text['DetectedText'])
@@ -98,6 +117,7 @@ def detect_text(photo,mediakey,data):
             #print('Following word: ' + word2)
             if word2.lower() == "wager":
                 print('Photo detection.  max bet found. media key: ' + mediakey)
+                found = True
                 for item in data['data']:
                     if checkJson('attachments',item):
                         for attachment in item['attachments']['media_keys']:
@@ -112,12 +132,12 @@ def detect_text(photo,mediakey,data):
                                     Bucket='slipcatch',
                                     Key=item['id'] + '.json'
                                 )
-
-        if mediakey not in omitList:
+        elif mediakey not in omitList:
             if text['DetectedText'].lower() == "under":
                 word2 = textDetections[int(text['Id'])+1]['DetectedText']
                 if word2.lower() == "review...":
                     print('Photo detection.  under review found. media key: ' + mediakey)
+                    found = True
                     for item in data['data']:
                         if checkJson('attachments',item):
                             for attachment in item['attachments']['media_keys']:
@@ -133,3 +153,6 @@ def detect_text(photo,mediakey,data):
                                         Key=item['id'] + '.json'
                                     )
                                     omitList.append(mediakey)
+
+    if found == False:
+        print("Nothing found.")

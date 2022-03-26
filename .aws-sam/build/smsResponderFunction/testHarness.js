@@ -42,14 +42,14 @@ const event = {
         "s3SchemaVersion": "1.0",
         "configurationId": "6443891f-1e52-4f55-8d5a-bf4fff37ec28",
         "bucket": {
-          "name": "slipcatch",
+          "name": "slipcatcherrors",
           "ownerIdentity": {
             "principalId": "AGRGXNAWT16XJ"
           },
           "arn": "arn:aws:s3:::testbucketjsatow"
         },
         "object": {
-          "key": "1505013602016763905.json",
+          "key": "03-25-2022_14:34.json",
           "size": 106027,
           "eTag": "a2e00abc5815c5ef0af639cc2e06f52e",
           "sequencer": "00623401C09057E241"

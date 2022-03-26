@@ -55,16 +55,30 @@ Resources:
           - s3:*
           Resource: '*'
       Events:
-        FileUpload:
+        StandardBucketTrigger:
           Type: S3
           Properties:
               Bucket: !Ref SlipCatchBucket
               Events: s3:ObjectCreated:*
-        FileUpload:
-          Type: S3
-          Properties:
-              Bucket: !Ref SlipCatchErrorsBucket
-              Events: s3:ObjectCreated:*
+  errorCheckerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: errorResponder/
+      Handler: app.lambdaHandler
+      Runtime: nodejs14.x
+      Policies:
+      - Statement:
+        - Sid: snsAccess
+          Effect: Allow
+          Action:
+          - sns:*
+          Resource: '*'
+      - Statement:
+        - Sid: s3Access
+          Effect: Allow
+          Action:
+          - s3:*
+          Resource: '*'
   imageFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -88,11 +102,51 @@ Resources:
       Environment:
         Variables:
           APIkey: !Ref APIkey
-
-Outputs:
-  smsResponderFunction:
-    Description: "Lambda Function ARN"
-    Value: !GetAtt smsResponderFunction.Arn
-  smsResponderFunctionIamRole:
-    Description: "Implicit IAM Role created for function"
-    Value: !GetAtt smsResponderFunctionRole.Arn
+  ErrorEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Run error event lambda every hour
+      Name: ErrorEventRule
+      ScheduleExpression: "rate(1 hour)"
+      State: DISABLED
+      Targets:
+      -
+        Arn:
+          Fn::GetAtt:
+            - "errorCheckerFunction"
+            - "Arn"
+        Id: "errorCheckerTarget"
+  PermissionForEventsToInvokeErrorLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "errorCheckerFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt:
+          - "ErrorEventRule"
+          - "Arn"
+  ImageEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Run image event lambda every minute
+      Name: ImageEventRule
+      ScheduleExpression: "rate(1 minute)"
+      State: DISABLED
+      Targets:
+      -
+        Arn:
+          Fn::GetAtt:
+            - "imageFunction"
+            - "Arn"
+        Id: "imageFunctionTarget"
+  PermissionForEventsToInvokeImageLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "imageFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt:
+          - "ImageEventRule"
+          - "Arn"

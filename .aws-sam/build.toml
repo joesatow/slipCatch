@@ -17,4 +17,12 @@ manifest_hash = ""
 packagetype = "Zip"
 functions = ["imageFunction"]
 
+[function_build_definitions.0aa35d0a-c239-47e3-9021-f052baf7b6d9]
+codeuri = "/Users/joesatow/slipCatch/errorResponder"
+runtime = "nodejs14.x"
+architecture = "x86_64"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["errorCheckerFunction"]
+
 [layer_build_definitions]

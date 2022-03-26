@@ -53,14 +53,35 @@ Resources:
           - s3:*
           Resource: '*'
       Events:
-        FileUpload:
+        StandardBucketTrigger:
           Type: S3
           Properties:
             Bucket:
-              Ref: SlipCatchErrorsBucket
+              Ref: SlipCatchBucket
             Events: s3:ObjectCreated:*
     Metadata:
       SamResourceId: smsResponderFunction
+  errorCheckerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: errorCheckerFunction
+      Handler: app.lambdaHandler
+      Runtime: nodejs14.x
+      Policies:
+      - Statement:
+        - Sid: snsAccess
+          Effect: Allow
+          Action:
+          - sns:*
+          Resource: '*'
+      - Statement:
+        - Sid: s3Access
+          Effect: Allow
+          Action:
+          - s3:*
+          Resource: '*'
+    Metadata:
+      SamResourceId: errorCheckerFunction
   imageFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -87,16 +108,51 @@ Resources:
             Ref: APIkey
     Metadata:
       SamResourceId: imageFunction
-Outputs:
-  smsResponderFunction:
-    Description: Lambda Function ARN
-    Value:
-      Fn::GetAtt:
-      - smsResponderFunction
-      - Arn
-  smsResponderFunctionIamRole:
-    Description: Implicit IAM Role created for function
-    Value:
-      Fn::GetAtt:
-      - smsResponderFunctionRole
-      - Arn
+  ErrorEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Run error event lambda every hour
+      Name: ErrorEventRule
+      ScheduleExpression: rate(1 hour)
+      State: DISABLED
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - errorCheckerFunction
+          - Arn
+        Id: errorCheckerTarget
+  PermissionForEventsToInvokeErrorLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: errorCheckerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - ErrorEventRule
+        - Arn
+  ImageEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Run image event lambda every minute
+      Name: ImageEventRule
+      ScheduleExpression: rate(1 minute)
+      State: DISABLED
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - imageFunction
+          - Arn
+        Id: imageFunctionTarget
+  PermissionForEventsToInvokeImageLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: imageFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - ImageEventRule
+        - Arn

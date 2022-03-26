@@ -9,37 +9,25 @@ exports.lambdaHandler = function(event, context) {
     var bucketName = eventText["Records"][0]["s3"]["bucket"]["name"];
     var objectKey = eventText["Records"][0]["s3"]["object"]["key"];
 
-    if (bucketName == "slipcatcherrors"){
-      console.log("Received ERROR event:", objectKey);
-      var params = {
-        Bucket: 'slipcatcherrors', // your bucket name,
-        Key: objectKey // path to the object you're looking for
-      }
-      getObject(params);
+    console.log("Received event:", objectKey);
 
-    } else {
-      console.log("Received event:", objectKey);
+    tweeturl = objectKey.split(".")
+    tweeturl = "https://twitter.com/b/status/" + tweeturl[0];
+    console.log(tweeturl);
 
-      tweeturl = objectKey.split(".")
-      tweeturl = "https://twitter.com/b/status/" + tweeturl[0];
-      console.log(tweeturl);
-
-      var params = {
-          Message: "New tweet found!  " + tweeturl,
-          TopicArn: "arn:aws:sns:us-east-1:728866571318:testtopic"
-      };
-      sendSNSmessage(params);
+    var params = {
+        Message: "New tweet found!  " + tweeturl,
+        TopicArn: "arn:aws:sns:us-east-1:728866571318:testtopic",
+        MessageAttributes: {
+          'AWS.SNS.SMS.SMSType': {
+            DataType: 'String',
+            StringValue: 'Promotional'
+          }
+        }
     }
-};
+    sendSNSmessage(params);
 
-async function getObject(p){
-  const data = JSON.parse((await (s3.getObject(p).promise())).Body.toString('utf-8'))
-  var params = {
-      Message: "Error found for user: " + data['user'] + ".  Error message: " + data['error'],
-      TopicArn: "arn:aws:sns:us-east-1:728866571318:testtopic"
-  };
-  sendSNSmessage(params);
-}
+};
 
 function sendSNSmessage(parameters){
   // Create promise and SNS service object
