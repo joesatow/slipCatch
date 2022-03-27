@@ -13,6 +13,7 @@ bucket = s3.Bucket(bucket_name)
 
 # datetime object containing current date and time
 now = datetime.now()
+print("first now: " + str(now)) 
 now = now.astimezone(UTC)
 d = now - timedelta(hours=0, minutes=1)
 lastMinute = d.strftime("%Y-%m-%dT%H:%M:00Z")
@@ -86,6 +87,7 @@ def detect_text(photo,mediakey,data):
     if found == False:
         print("Nothing found.")
 
+print("last minute: " + lastMinute)
 for query in queries:
     twitUrl = "https://api.twitter.com/2/tweets/search/recent?query=from:" + query + "&start_time=" + lastMinute + "&expansions=attachments.media_keys&media.fields=url"
     omitList = []
@@ -104,12 +106,12 @@ for query in queries:
                     }
 
         errorTime = now - timedelta(hours=5, minutes=0)
-        errorTime = errorTime.strftime("%m-%d-%Y_%H:%M")
+        errorTime = errorTime.strftime("%m-%d-%Y")
         s3 = boto3.client('s3')
         s3.put_object(
             Body=json.dumps(json_object),
             Bucket='slipcatcherrors',
-            Key=str(errorTime) + '.json'
+            Key=str(errorTime) + "_" + query + '.json'
         )
     else:
         resultCount = python_obj['meta']['result_count']
@@ -147,7 +149,7 @@ for query in queries:
                 for item in python_obj['includes']['media']:
                     if (item['type'] == 'photo'):
                         if item['media_key'] not in omitList:
-                            print('New single photo from: ' + query + '. Media key: ' + item['media_key'] + ". Sending to scan...")
+                            print('New single photo from: ' + query + '. Media key: ' + item['media_key'] + ". Scanning photo...")
                             url = item['url']
                             r = requests.get(url, stream=True)
                             key = url.split("media/",1)[1]

@@ -3,7 +3,6 @@ import os
 import requests
 import json
 from datetime import datetime, timedelta
-from dateutil.tz import UTC
 
 session = boto3.Session()
 s3 = session.resource('s3')
@@ -13,7 +12,6 @@ auth = 'Bearer ' + os.environ['APIkey']
 
 # datetime object containing current date and time
 now = datetime.now()
-now = now.astimezone(UTC)
 d = now - timedelta(hours=0, minutes=1)
 lastMinute = d.strftime("%Y-%m-%dT%H:%M:00Z")
 #lastMinute = '2022-03-17T20:35:00Z'
@@ -26,6 +24,7 @@ headers = {
 }
 
 def lambdaHandler(event, context):
+    print("last minute: " + lastMinute)
     for query in queries:
 
         twitUrl = "https://api.twitter.com/2/tweets/search/recent?query=from:" + query + "&start_time=" + lastMinute + "&expansions=attachments.media_keys&media.fields=url"
@@ -46,12 +45,12 @@ def lambdaHandler(event, context):
 
             errorTime = now - timedelta(hours=5, minutes=0)
             errorTime = errorTime.strftime("%m-%d-%Y")
-            s3 = boto3.client('s3')
-            s3.put_object(
-                Body=json.dumps(json_object),
-                Bucket='slipcatcherrors',
-                Key=str(errorTime) + "_" + query + '.json'
-            )
+            # s3 = boto3.client('s3')
+            # s3.put_object(
+            #     Body=json.dumps(json_object),
+            #     Bucket='slipcatcherrors',
+            #     Key=str(errorTime) + "_" + query + '.json'
+            # )
         else:
             resultCount = python_obj['meta']['result_count']
             if resultCount == 0:
@@ -67,12 +66,12 @@ def lambdaHandler(event, context):
                                     "text": item['text']
                                     }
 
-                        s3 = boto3.client('s3')
-                        s3.put_object(
-                            Body=json.dumps(json_object),
-                            Bucket='slipcatch',
-                            Key=item['id'] + '.json'
-                        )
+                        # s3 = boto3.client('s3')
+                        # s3.put_object(
+                        #     Body=json.dumps(json_object),
+                        #     Bucket='slipcatch',
+                        #     Key=item['id'] + '.json'
+                        # )
 
                         if checkJson('attachments',item):
                             print("attachments here - max result in text. Omitting photo scan...")
@@ -93,8 +92,8 @@ def lambdaHandler(event, context):
                                 r = requests.get(url, stream=True)
                                 key = url.split("media/",1)[1]
 
-                                bucket.upload_fileobj(r.raw,key)
-                                detect_text(key,item['media_key'], python_obj)
+                                # bucket.upload_fileobj(r.raw,key)
+                                # detect_text(key,item['media_key'], python_obj)
                                 print()
 
 def checkJson(key,jsonContents):
