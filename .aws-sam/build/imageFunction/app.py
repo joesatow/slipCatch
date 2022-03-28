@@ -2,6 +2,7 @@ import boto3
 import os
 import requests
 import json
+import moment
 from datetime import datetime, timedelta
 
 session = boto3.Session()
@@ -12,6 +13,8 @@ auth = 'Bearer ' + os.environ['APIkey']
 
 # datetime object containing current date and time
 now = datetime.now()
+print("now: " + str(now))
+print("moment: " + str(moment.utcnow()))
 d = now - timedelta(hours=0, minutes=1)
 lastMinute = d.strftime("%Y-%m-%dT%H:%M:00Z")
 #lastMinute = '2022-03-17T20:35:00Z'

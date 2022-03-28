@@ -4,26 +4,26 @@ import requests
 import json
 from datetime import datetime, timedelta
 
-session = boto3.Session()
-s3 = session.resource('s3')
-bucket_name = 'slipcatchphotos'
-bucket = s3.Bucket(bucket_name)
-auth = 'Bearer ' + os.environ['APIkey']
-
-# datetime object containing current date and time
-now = datetime.now()
-d = now - timedelta(hours=0, minutes=1)
-lastMinute = d.strftime("%Y-%m-%dT%H:%M:00Z")
-#lastMinute = '2022-03-17T20:35:00Z'
-queries = ["satowjoseph", "joesatow", "beaulwagner", "onlyparlays_", "themistermarcus", "portman7387", "j2110"]
-
-payload={}
-headers = {
-  'Authorization':  auth,
-  'Cookie': 'guest_id=v1%3A164748160617485457; guest_id_ads=v1%3A164748160617485457; guest_id_marketing=v1%3A164748160617485457; personalization_id="v1_PFHqkQhmwp141oUu4hPm9w=="'
-}
-
 def lambdaHandler(event, context):
+    session = boto3.Session()
+    s3 = session.resource('s3')
+    bucket_name = 'slipcatchphotos'
+    bucket = s3.Bucket(bucket_name)
+    auth = 'Bearer ' + os.environ['APIkey']
+
+    # datetime object containing current date and time
+    now = datetime.now()
+    d = now - timedelta(hours=0, minutes=1)
+    lastMinute = d.strftime("%Y-%m-%dT%H:%M:00Z")
+    #lastMinute = '2022-03-17T20:35:00Z'
+    queries = ["satowjoseph", "joesatow", "beaulwagner", "onlyparlays_", "themistermarcus", "portman7387", "j2110"]
+
+    payload={}
+    headers = {
+      'Authorization':  auth,
+      'Cookie': 'guest_id=v1%3A164748160617485457; guest_id_ads=v1%3A164748160617485457; guest_id_marketing=v1%3A164748160617485457; personalization_id="v1_PFHqkQhmwp141oUu4hPm9w=="'
+    }
+
     print("last minute: " + lastMinute)
     for query in queries:
 
