@@ -9,7 +9,7 @@ def lambdaHandler(event, context):
     s3 = session.resource('s3')
     bucket_name = 'slipcatchphotos'
     bucket = s3.Bucket(bucket_name)
-    auth = 'Bearer ' + os.environ['APIkey']
+    auth = 'Bearer ' + os.environ['APIkey'] #Twitter API bearer token
 
     # datetime object containing current date and time
     now = datetime.now()
@@ -92,18 +92,20 @@ def lambdaHandler(event, context):
                             if item['media_key'] not in omitList:
                                 print('New single photo from: ' + query + '. Media key: ' + item['media_key'] + ". Scanning photo...")
                                 url = item['url']
-                                r = requests.get(url, stream=True)
                                 key = url.split("media/",1)[1]
 
+                                r = requests.get(url, stream=True)
                                 bucket.upload_fileobj(r.raw,key)
-                                detect_text(key,item['media_key'], python_obj)
+                                detect_text(key,item['media_key'], python_obj,url)
+                                s3 = session.resource('s3')
+                                s3.Object('slipcatchphotos', key).delete()
                                 print()
 
 def checkJson(key,jsonContents):
     existsFlag = True if key in jsonContents else False
     return existsFlag
 
-def detect_text(photo,mediakey,data):
+def detect_text(photo,mediakey,data,requestsURL):
     print("Beginning scan for: " + mediakey)
     omitList = []
     client=boto3.client('rekognition')
@@ -120,6 +122,8 @@ def detect_text(photo,mediakey,data):
             if word2.lower() == "wager":
                 print('Photo detection.  max bet found. media key: ' + mediakey)
                 found = True
+                r = requests.get(requestsURL, stream=True)
+                bucket.upload_fileobj(r.raw,photo)
                 for item in data['data']:
                     if checkJson('attachments',item):
                         for attachment in item['attachments']['media_keys']:
@@ -140,6 +144,8 @@ def detect_text(photo,mediakey,data):
                 if word2.lower() == "review...":
                     print('Photo detection.  under review found. media key: ' + mediakey)
                     found = True
+                    r = requests.get(requestsURL, stream=True)
+                    bucket.upload_fileobj(r.raw,photo)
                     for item in data['data']:
                         if checkJson('attachments',item):
                             for attachment in item['attachments']['media_keys']:
