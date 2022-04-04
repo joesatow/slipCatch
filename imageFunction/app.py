@@ -5,11 +5,11 @@ import json
 from datetime import datetime, timedelta
 
 def lambdaHandler(event, context):
-    session = boto3.Session()
-    s3 = session.resource('s3')
-    bucket_name = 'slipcatchphotos'
-    bucket = s3.Bucket(bucket_name)
-    auth = 'Bearer ' + os.environ['APIkey'] #Twitter API bearer token
+    # ititialize S3 session
+    s3 = boto3.resource('s3')
+
+    # Twitter API bearer token
+    auth = 'Bearer ' + os.environ['APIkey']
 
     # datetime object containing current date and time
     now = datetime.now()
@@ -30,7 +30,11 @@ def lambdaHandler(event, context):
     print("latestMinute: " + latestMinute)
     for query in queries:
 
+        # Prod URL
         twitUrl = "https://api.twitter.com/2/tweets/search/recent?query=from:" + query + "&start_time=" + earliestMinute + "&end_time=" + latestMinute + "&expansions=attachments.media_keys&media.fields=url"
+
+        # Test URL
+        #twitUrl = "https://api.twitter.com/2/tweets/search/recent?query=from:" + query + "&start_time=" + (now - timedelta(hours=0, minutes=1)).strftime("%Y-%m-%dT%H:%M:00Z") + "&expansions=attachments.media_keys&media.fields=url"
         omitList = []
         response = requests.request("GET", twitUrl, headers=headers, data=payload)
         python_obj = json.loads(response.text)
@@ -48,12 +52,8 @@ def lambdaHandler(event, context):
 
             errorTime = now - timedelta(hours=5, minutes=0)
             errorTime = errorTime.strftime("%m-%d-%Y")
-            s3 = boto3.client('s3')
-            s3.put_object(
-                Body=json.dumps(json_object),
-                Bucket='slipcatcherrors',
-                Key=str(errorTime) + "_" + query + '.json'
-            )
+
+            uploadJSONtoS3(json.dumps(json_object),'slipcatcherrors',str(errorTime) + "_" + query + '.json')
         else:
             resultCount = python_obj['meta']['result_count']
             if resultCount == 0:
@@ -69,12 +69,7 @@ def lambdaHandler(event, context):
                                     "text": item['text']
                                     }
 
-                        s3 = boto3.client('s3')
-                        s3.put_object(
-                            Body=json.dumps(json_object),
-                            Bucket='slipcatch',
-                            Key=item['id'] + '.json'
-                        )
+                        uploadJSONtoS3(json.dumps(json_object),'slipcatch',item['id'] + '.json')
 
                         if checkJson('attachments',item):
                             print("attachments here - max result in text. Omitting photo scan...")
@@ -93,19 +88,18 @@ def lambdaHandler(event, context):
                                 print('New single photo from: ' + query + '. Media key: ' + item['media_key'] + ". Scanning photo...")
                                 url = item['url']
                                 key = url.split("media/",1)[1]
-
                                 r = requests.get(url, stream=True)
-                                bucket.upload_fileobj(r.raw,key)
-                                detect_text(key,item['media_key'], python_obj,url)
-                                s3 = session.resource('s3')
-                                s3.Object('slipcatchphotos', key).delete()
+                                uploadPhotoToS3(url,key)
+                                if not detect_text(key,item['media_key'],python_obj,url):
+                                    print("Nothing found. Deleting photo: " + item['media_key'] + "...")
+                                    s3.Object('slipcatchphotos', key).delete()
                                 print()
 
 def checkJson(key,jsonContents):
     existsFlag = True if key in jsonContents else False
     return existsFlag
 
-def detect_text(photo,mediakey,data,requestsURL):
+def detect_text(photo,mediakey,data,url):
     print("Beginning scan for: " + mediakey)
     omitList = []
     client=boto3.client('rekognition')
@@ -122,45 +116,52 @@ def detect_text(photo,mediakey,data,requestsURL):
             if word2.lower() == "wager":
                 print('Photo detection.  max bet found. media key: ' + mediakey)
                 found = True
-                r = requests.get(requestsURL, stream=True)
-                bucket.upload_fileobj(r.raw,photo)
                 for item in data['data']:
                     if checkJson('attachments',item):
                         for attachment in item['attachments']['media_keys']:
                             if attachment == mediakey:
-                                print("id: " + item['id'])
                                 json_object = {
                                             "id": item['id']
                                             }
-                                s3 = boto3.client('s3')
-                                s3.put_object(
-                                    Body=json.dumps(json_object),
-                                    Bucket='slipcatch',
-                                    Key=item['id'] + '.json'
-                                )
+                                uploadJSONtoS3(json.dumps(json_object),'slipcatch',item['id'] + '.json')
+                                print("Uploading photo... Media key: " + mediakey + ". Photo id: " + photo)
+                                uploadPhotoToS3(url,photo)
+                                return True
         elif mediakey not in omitList:
             if text['DetectedText'].lower() == "under":
                 word2 = textDetections[int(text['Id'])+1]['DetectedText']
                 if word2.lower() == "review...":
                     print('Photo detection.  under review found. media key: ' + mediakey)
                     found = True
-                    r = requests.get(requestsURL, stream=True)
-                    bucket.upload_fileobj(r.raw,photo)
                     for item in data['data']:
                         if checkJson('attachments',item):
                             for attachment in item['attachments']['media_keys']:
                                 if attachment == mediakey:
-                                    print("id: " + item['id'])
                                     json_object = {
                                                 "id": item['id']
                                                 }
-                                    s3 = boto3.client('s3')
-                                    s3.put_object(
-                                        Body=json.dumps(json_object),
-                                        Bucket='slipcatch',
-                                        Key=item['id'] + '.json'
-                                    )
+                                    uploadJSONtoS3(json.dumps(json_object),'slipcatch',item['id'] + '.json')
                                     omitList.append(mediakey)
+                                    print("Uploading photo... Media key: " + mediakey + ". Photo id: " + photo)
+                                    uploadPhotoToS3(url,photo)
+                                    return True
 
     if found == False:
-        print("Nothing found.")
+        return False
+
+def uploadPhotoToS3(url,key):
+    session = boto3.Session()
+    s3 = session.resource('s3')
+    bucket_name = 'slipcatchphotos'
+    bucket = s3.Bucket(bucket_name)
+
+    r = requests.get(url, stream=True)
+    bucket.upload_fileobj(r.raw,key)
+
+def uploadJSONtoS3(body,bucket,key):
+    s3 = boto3.client('s3')
+    s3.put_object(
+        Body=body,
+        Bucket=bucket,
+        Key=key
+    )
